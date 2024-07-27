@@ -1,5 +1,7 @@
 import random
 import time
+import json
+import os
 
 # INSTRUCTIONS
 # 1.) Select which lock you'd like (default is 5-pin lock)
@@ -8,12 +10,25 @@ import time
 # 4.) The game will tell you how many pins are correct out of the total number of pins, kinda like wordle.
 # 5.) Pick the lock as fast as you can. Good luck!
 # PLANNED FEATURES
-# 1.) More lock options (higher pins, different types of locks, etc..)
+# 1.) DONE
 # 2.) Add items and tools to help you pick the lock faster. (Better picks, rakes, bump keys, etc..)
 # 3.) Add a scoring system based on how fast you can pick the lock, which coorelates to money earned and eligiability to pick harder locks.
 # 4.) Tkinter interface for more user-friendly experience.
-# 5.) Json file to store user data and lock data. (This is priority)
+# 5.) DONE
 # 6.) User created locks.
+
+
+DATA_FILE = 'lockpicking_game_data.json'
+
+def load_data():
+    if os.path.exists(DATA_FILE):
+        with open(DATA_FILE, 'r') as file:
+            return json.load(file)
+    return {'user_data': {}, 'locks': {}}
+
+def save_data(data):
+    with open(DATA_FILE, 'w') as file:
+        json.dump(data, file, indent=4)
 
 def generate_lock(pin_count):
     return [random.randint(0, 9) for _ in range(pin_count)]
@@ -28,15 +43,32 @@ def get_feedback(lock, guess):
 def select_lock():
     print("Select a lock:")
     print("1. Default 5-pin lock")
+    print("2. 4-pin lock")
+    print("3. 6-pin lock")
     choice = input("Enter the number of your choice: ")
     
     if choice == '1':
         return 5
+    elif choice == '2':
+        return 4
+    elif choice == '3':
+        return 6
     else:
         print("Invalid choice. Using default 5-pin lock.")
         return 5
 
+def update_user_data(data, pin_count, elapsed_time):
+    lock_key = f'{pin_count}-pin'
+    if lock_key not in data['user_data']:
+        data['user_data'][lock_key] = {'attempts': 0, 'fastest_time': None}
+    
+    data['user_data'][lock_key]['attempts'] += 1
+    if data['user_data'][lock_key]['fastest_time'] is None or elapsed_time < data['user_data'][lock_key]['fastest_time']:
+        data['user_data'][lock_key]['fastest_time'] = elapsed_time
+
 def main():
+    data = load_data()
+    
     pin_count = select_lock()
     lock = generate_lock(pin_count)
     binding_pin = find_binding_pin(lock)
@@ -76,7 +108,11 @@ def main():
         
         if feedback == f'{pin_count} out of {pin_count} pins are correct':
             elapsed_time = time.time() - start_time
-            print(f"Congratulations! You picked the {pin_count} pin lock in {elapsed_time:.2f} seconds!")
+            print(f"Congratulations! You've unlocked the lock in {elapsed_time:.2f} seconds!")
+            
+            update_user_data(data, pin_count, elapsed_time)
+            save_data(data)
+            
             break
 
 if __name__ == "__main__":
